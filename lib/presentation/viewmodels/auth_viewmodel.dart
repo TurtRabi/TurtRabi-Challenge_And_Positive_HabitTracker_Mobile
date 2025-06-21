@@ -1,3 +1,5 @@
+import 'dart:ffi';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -16,7 +18,7 @@ class AuthViewModel extends ChangeNotifier {
   GoogleSignInAccount? _user;
   GoogleSignInAccount? get user => _user;
 
-  Future<void> signInWithGoogle() async {
+  Future<bool> signInWithGoogle() async {
     try {
       final account = await _googleSignIn.signIn();
       if (account != null) {
@@ -27,23 +29,30 @@ class AuthViewModel extends ChangeNotifier {
           await _socialLoginUseCase.execute('google', idToken, 'mobile');
           notifyListeners();
           debugPrint('✅ Google User: ${account.displayName}, Email: ${account.email}');
+          return true;
         } else {
           debugPrint('❌ Không lấy được ID Token! Đảm bảo bạn đã cấu hình đúng serverClientId (Web Client ID).');
+          return false;
         }
       } else {
         debugPrint('⚠️ Người dùng huỷ đăng nhập');
+        return false;
       }
     } catch (e) {
+
       debugPrint('❌ Lỗi Google login: $e');
+      return false;
     }
   }
 
-  Future<void>sigInWithUserNameAndPassword(String username, String password) async{
+  Future<bool>sigInWithUserNameAndPassword(String username, String password) async{
     var result = await _socialLoginUseCase.executeLogin(username, password);
     notifyListeners();
     if(result!=null){
-
+      print(result);
+      return true;
     }
+    return false;
   }
 
   Future<void> registerWithUserNameAndPassword(String username, String password,String email,String phone) async{
@@ -61,6 +70,19 @@ class AuthViewModel extends ChangeNotifier {
     }
     await _socialLoginUseCase.executeSendEmail(userId: findUserByEmail.id);
     notifyListeners();
+    return true;
+  }
+
+  Future<bool> changePassword(String email, String newPassword) async {
+    var findUserByEmail = await _socialLoginUseCase.executeGetUserByEmail(email);
+    if(findUserByEmail==null){
+      return false;
+    }
+    var response =await _socialLoginUseCase.executeChangePassword(id: findUserByEmail.id, newPassword: newPassword);
+    notifyListeners();
+    if(!response){
+      return false;
+    }
     return true;
   }
 

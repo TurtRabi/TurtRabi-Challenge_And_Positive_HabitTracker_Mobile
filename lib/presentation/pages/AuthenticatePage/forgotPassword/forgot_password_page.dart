@@ -3,8 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../providers/auth_provider.dart';
-import '../../widgets/showOtpDialog.dart';
+import '../../../providers/auth_provider.dart';
+import '../../../widgets/showOtpDialog.dart';
+
+
 
 class ForgotPasswordPage extends ConsumerStatefulWidget {
   const ForgotPasswordPage({super.key});
@@ -75,10 +77,9 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> with Si
               ElevatedButton(
                 onPressed: () async {
                   final email = _emailController.text.trim();
-
                   var result = await  ref.watch(authViewModelProvider).SendEmail(email);
                   if(result){
-                    showOtpDialog(context);
+                    showOtpDialog(context,ref,email);
                   }else{
                     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Email not found')));
                   }

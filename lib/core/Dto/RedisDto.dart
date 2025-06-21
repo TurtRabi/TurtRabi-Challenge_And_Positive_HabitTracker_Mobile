@@ -1,14 +1,13 @@
-import 'package:tracking_positive_mobile/core/Dto/UserDto.dart';
-
-class RedisDto{
+class RedisDto {
   final String key;
-  final String Value;
+  final String value;
 
-  RedisDto({required this.key, required this.Value});
+  RedisDto({required this.key, required this.value});
+
   factory RedisDto.fromJson(Map<String, dynamic> json) {
     return RedisDto(
       key: json['key'],
-      Value: json['Value'],
+      value: json['value'],
     );
   }
 }

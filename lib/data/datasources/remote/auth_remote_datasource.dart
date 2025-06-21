@@ -21,11 +21,11 @@ class AuthRemoteDatasource{
     },);
   }
 
-  Future<Response> login({
+  Future<bool> login({
     required String userName,
     required String password
   }) async {
-    return await dio.post('/user/User/login',data: {
+    var response= await dio.post('/user/User/login',data: {
       'userName': userName,
       'password': password,
     },
@@ -35,6 +35,10 @@ class AuthRemoteDatasource{
         },
       ),
     );
+
+    print(response);
+
+    return response.statusCode == 200;
   }
 
   Future<Response> RegiserUser({
@@ -83,5 +87,18 @@ class AuthRemoteDatasource{
     return response.statusCode == 200;
 
   }
+
+  Future<bool> changePassword({required String id,required String newPassword}) async {
+    var response = await dio.post(
+      '/user/User/change-password/${id}/${newPassword}',
+      options: Options(
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      ),
+    );
+    return response.statusCode == 200;
+  }
+
 
 }

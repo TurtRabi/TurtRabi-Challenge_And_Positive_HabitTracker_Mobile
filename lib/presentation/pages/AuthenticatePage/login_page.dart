@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../providers/auth_provider.dart';
+import '../../providers/auth_provider.dart';
 
 
 class LoginPage extends ConsumerStatefulWidget {
@@ -132,10 +132,13 @@ class _LoginPageState extends ConsumerState<LoginPage> with SingleTickerProvider
         const SizedBox(height: 8),
 
         ElevatedButton(
-          onPressed: () {
+          onPressed: () async {
             final email = userNameCtrl.text.trim();
             final pass = passCtrl.text.trim();
-            ref.read(authViewModelProvider).sigInWithUserNameAndPassword(email, pass);
+            var result= await ref.read(authViewModelProvider).sigInWithUserNameAndPassword(email, pass);
+            if(result){
+              context.go('/home');
+            }
           },
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.deepPurple,
@@ -170,8 +173,11 @@ class _LoginPageState extends ConsumerState<LoginPage> with SingleTickerProvider
         const SizedBox(height: 16),
 
         ElevatedButton.icon(
-          onPressed: () {
-            ref.read(authViewModelProvider).signInWithGoogle();
+          onPressed: () async {
+            var result = await ref.read(authViewModelProvider).signInWithGoogle();
+            if(result){
+              context.go('/home');
+            }
           },
           icon: Image.asset('assets/images/icons8-google-48.png', width: 24, height: 24),
           label: const Text('Đăng nhập với Google'),

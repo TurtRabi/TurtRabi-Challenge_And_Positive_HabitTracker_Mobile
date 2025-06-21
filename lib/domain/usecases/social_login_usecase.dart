@@ -11,7 +11,7 @@ class SocialLoginUseCase{
   Future<void> execute(String provider,String accessToken,String clientType){
     return repository.socialLogin(provider, accessToken, clientType);
   }
-  Future<Response> executeLogin(String userName,String password){
+  Future<bool> executeLogin(String userName,String password){
     return repository.login(userName, password);
   }
   Future<Response> executeRegister(String userName,String password,String email,String phone){
@@ -22,5 +22,8 @@ class SocialLoginUseCase{
   }
   Future<bool> executeSendEmail({required String userId}){
     return repository.SendEmail(userId: userId);
+  }
+  Future<bool> executeChangePassword({required String id,required String newPassword}){
+    return repository.changePassword(id: id, newPassword: newPassword);
   }
 }

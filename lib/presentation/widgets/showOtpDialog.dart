@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:pin_code_fields/pin_code_fields.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers/auth_provider.dart';
+import '../providers/redis_provider.dart';
 
-Future<void> showOtpDialog(BuildContext context) async {
+Future<void> showOtpDialog(BuildContext context, WidgetRef ref,String email)  async {
   String otpCode = '';
   final mediaQuery = MediaQuery.of(context);
   final screenWidth = mediaQuery.size.width;
@@ -67,10 +71,17 @@ Future<void> showOtpDialog(BuildContext context) async {
             child: Text('Cancel'),
           ),
           TextButton(
-            onPressed: () {
+            onPressed: () async {
               if (otpCode.length == 6) {
-                Navigator.of(context).pop();
-                Navigator.of(context).pushNamed('/reset-password');
+                var getOtp = await ref.watch(redisViewModelProvider).getRedisByKey(key: "verify:email:${email}");
+                if(getOtp.value==otpCode){
+                  await ref.read(redisViewModelProvider).deleteRedis(key: "verify:email:${email}");
+                  Navigator.of(context).pop();
+                  Future.microtask(() => context.go('/reset-password',extra: email));
+
+                }
+                print("hello");
+
               } else {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(content: Text('Please enter all 6 digits')),

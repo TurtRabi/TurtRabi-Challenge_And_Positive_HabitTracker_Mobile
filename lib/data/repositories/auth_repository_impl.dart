@@ -16,7 +16,7 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<Response> login(String userName, String password) {
+  Future<bool> login(String userName, String password) {
     return datasource.login(userName: userName, password: password);
   }
 
@@ -33,5 +33,10 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<bool> SendEmail({required String userId}) {
     return datasource.SendEmail(userId: userId);
+  }
+
+  @override
+  Future<bool> changePassword({required String id, required String newPassword}) {
+    return datasource.changePassword(id: id, newPassword: newPassword);
   }
 }
