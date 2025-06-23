@@ -3,8 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../providers/auth_provider.dart';
-
-
+import '../../widgets/log_overlay_service.dart';
 
 class SignUpPage extends ConsumerStatefulWidget {
   const SignUpPage({super.key});
@@ -18,6 +17,8 @@ class _SignUpPageState extends ConsumerState<SignUpPage> with SingleTickerProvid
   final TextEditingController passwordCtrl = TextEditingController();
   final TextEditingController emailCtrl = TextEditingController();
   final TextEditingController phoneCtrl = TextEditingController();
+  bool _isLoading = false;
+  bool _obscurePassword = true;
 
   late AnimationController _controller;
   late Animation<Offset> _slideAnimation;
@@ -50,37 +51,46 @@ class _SignUpPageState extends ConsumerState<SignUpPage> with SingleTickerProvid
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF5F3FF),
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: SlideTransition(
-            position: _slideAnimation,
-            child: FadeTransition(
-              opacity: _fadeAnimation,
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 400),
-                curve: Curves.easeInOut,
-                width: 340,
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Colors.black26,
-                      blurRadius: 12,
-                      offset: Offset(0, 6),
+    return Stack(
+      children: [
+        Scaffold(
+          backgroundColor: const Color(0xFFF5F3FF),
+          body: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: SlideTransition(
+                position: _slideAnimation,
+                child: FadeTransition(
+                  opacity: _fadeAnimation,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 400),
+                    curve: Curves.easeInOut,
+                    width: 340,
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Colors.black26,
+                          blurRadius: 12,
+                          offset: Offset(0, 6),
+                        ),
+                      ],
                     ),
-                  ],
+                    child: buildForm(context),
+                  ),
                 ),
-                child: buildForm(context),
               ),
             ),
           ),
         ),
-      ),
+        if (_isLoading)
+          Container(
+            color: Colors.black.withOpacity(0.3),
+            child: const Center(child: CircularProgressIndicator()),
+          ),
+      ],
     );
   }
 
@@ -99,6 +109,7 @@ class _SignUpPageState extends ConsumerState<SignUpPage> with SingleTickerProvid
           controller: usernameCtrl,
           decoration: const InputDecoration(
             labelText: 'Tên đăng nhập',
+            prefixIcon: Icon(Icons.person),
             border: OutlineInputBorder(),
           ),
         ),
@@ -106,18 +117,31 @@ class _SignUpPageState extends ConsumerState<SignUpPage> with SingleTickerProvid
 
         TextField(
           controller: passwordCtrl,
-          obscureText: true,
-          decoration: const InputDecoration(
+          obscureText: _obscurePassword,
+          decoration: InputDecoration(
             labelText: 'Mật khẩu',
-            border: OutlineInputBorder(),
+            prefixIcon: const Icon(Icons.lock),
+            border: const OutlineInputBorder(),
+            suffixIcon: IconButton(
+              icon: Icon(
+                _obscurePassword ? Icons.visibility_off : Icons.visibility,
+              ),
+              onPressed: () {
+                setState(() {
+                  _obscurePassword = !_obscurePassword;
+                });
+              },
+            ),
           ),
         ),
         const SizedBox(height: 16),
 
         TextField(
           controller: emailCtrl,
+          keyboardType: TextInputType.emailAddress,
           decoration: const InputDecoration(
             labelText: 'Email',
+            prefixIcon: Icon(Icons.email),
             border: OutlineInputBorder(),
           ),
         ),
@@ -125,22 +149,17 @@ class _SignUpPageState extends ConsumerState<SignUpPage> with SingleTickerProvid
 
         TextField(
           controller: phoneCtrl,
+          keyboardType: TextInputType.phone,
           decoration: const InputDecoration(
             labelText: 'Số điện thoại',
+            prefixIcon: Icon(Icons.phone),
             border: OutlineInputBorder(),
           ),
-          keyboardType: TextInputType.phone,
         ),
         const SizedBox(height: 24),
 
         ElevatedButton(
-          onPressed: () {
-            final user = usernameCtrl.text.trim();
-            final pass = passwordCtrl.text.trim();
-            final email = emailCtrl.text.trim();
-            final phone = phoneCtrl.text.trim();
-           ref.read(authViewModelProvider).registerWithUserNameAndPassword(user, pass, email, phone);
-          },
+          onPressed: _isLoading ? null : () => _handleSignUp(context),
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.deepPurple,
             foregroundColor: Colors.white,
@@ -149,7 +168,6 @@ class _SignUpPageState extends ConsumerState<SignUpPage> with SingleTickerProvid
           ),
           child: const Text('Đăng ký'),
         ),
-
         const SizedBox(height: 16),
 
         Row(
@@ -174,8 +192,12 @@ class _SignUpPageState extends ConsumerState<SignUpPage> with SingleTickerProvid
         const SizedBox(height: 16),
 
         ElevatedButton.icon(
-          onPressed: (){
-            ref.read(authViewModelProvider).signInWithGoogle();
+          onPressed: _isLoading
+              ? null
+              : () async {
+            setState(() => _isLoading = true);
+            await ref.read(authViewModelProvider).signInWithGoogle();
+            setState(() => _isLoading = false);
           },
           icon: Image.asset('assets/images/icons8-google-48.png', width: 24, height: 24),
           label: const Text('Đăng ký với Google'),
@@ -188,9 +210,27 @@ class _SignUpPageState extends ConsumerState<SignUpPage> with SingleTickerProvid
           ),
         ),
         const SizedBox(height: 12),
-
-
       ],
     );
+  }
+
+  Future<void> _handleSignUp(BuildContext context) async {
+    final user = usernameCtrl.text.trim();
+    final pass = passwordCtrl.text.trim();
+    final email = emailCtrl.text.trim();
+    final phone = phoneCtrl.text.trim();
+    setState(() => _isLoading = true);
+    try {
+      await ref.read(authViewModelProvider).registerWithUserNameAndPassword(user, pass, email, phone);
+      LogOverlayService.show(context,
+        message: 'Đăng kí thành công',
+        type: LogType.success,
+        duration: const Duration(seconds: 3),
+      );
+      await Future.delayed(const Duration(milliseconds: 800));
+      context.go("/login");
+    } finally {
+      setState(() => _isLoading = false);
+    }
   }
 }

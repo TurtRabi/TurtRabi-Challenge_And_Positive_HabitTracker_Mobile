@@ -5,31 +5,36 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/auth_provider.dart';
 import '../providers/redis_provider.dart';
 
-Future<void> showOtpDialog(BuildContext context, WidgetRef ref,String email)  async {
+Future<void> showOtpDialog(BuildContext context, WidgetRef ref, String email) async {
   String otpCode = '';
   final mediaQuery = MediaQuery.of(context);
   final screenWidth = mediaQuery.size.width;
-  final dialogWidth = screenWidth * 0.9; // chiếm 90% chiều ngang
+  final dialogWidth = screenWidth * 0.9;
 
   return showDialog(
     context: context,
     barrierDismissible: false,
     builder: (context) {
       return AlertDialog(
-        title: Text('Enter Verification Code'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text(
+          'Nhập mã xác thực',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         content: Container(
           width: dialogWidth,
-          constraints: BoxConstraints(maxWidth: 400), // không vượt quá 400
+          constraints: const BoxConstraints(maxWidth: 400),
           child: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  'We have sent a 6-digit code to your email.',
+                const Text(
+                  'Chúng tôi đã gửi mã gồm 6 chữ số tới email của bạn. Vui lòng nhập mã để tiếp tục.',
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: screenWidth < 360 ? 14 : 16),
+                  style: TextStyle(fontSize: 15),
                 ),
-                SizedBox(height: 16),
+                const SizedBox(height: 20),
                 LayoutBuilder(
                   builder: (context, constraints) {
                     final fieldCount = 6;
@@ -45,14 +50,14 @@ Future<void> showOtpDialog(BuildContext context, WidgetRef ref,String email)  as
                       animationType: AnimationType.fade,
                       pinTheme: PinTheme(
                         shape: PinCodeFieldShape.box,
-                        borderRadius: BorderRadius.circular(5),
+                        borderRadius: BorderRadius.circular(10),
                         fieldHeight: fieldWidth,
                         fieldWidth: fieldWidth,
-                        activeColor: Colors.blue,
-                        selectedColor: Colors.blueAccent,
+                        activeColor: Colors.deepPurple,
+                        selectedColor: Colors.deepPurpleAccent,
                         inactiveColor: Colors.grey,
                       ),
-                      onChanged: (value) {},
+                      onChanged: (_) {},
                       onCompleted: (value) {
                         otpCode = value;
                       },
@@ -63,32 +68,39 @@ Future<void> showOtpDialog(BuildContext context, WidgetRef ref,String email)  as
             ),
           ),
         ),
+        actionsAlignment: MainAxisAlignment.spaceEvenly,
         actions: [
           TextButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-            },
-            child: Text('Cancel'),
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Hủy'),
           ),
-          TextButton(
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.deepPurple,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
             onPressed: () async {
               if (otpCode.length == 6) {
-                var getOtp = await ref.watch(redisViewModelProvider).getRedisByKey(key: "verify:email:${email}");
-                if(getOtp.value==otpCode){
-                  await ref.read(redisViewModelProvider).deleteRedis(key: "verify:email:${email}");
+                final getOtp = await ref.read(redisViewModelProvider).getRedisByKey(key: "verify:email:$email");
+
+                if (getOtp.value == otpCode) {
+                  await ref.read(redisViewModelProvider).deleteRedis(key: "verify:email:$email");
                   Navigator.of(context).pop();
-                  Future.microtask(() => context.go('/reset-password',extra: email));
-
+                  Future.microtask(() => context.go('/reset-password', extra: email));
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Mã xác thực không đúng.')),
+                  );
                 }
-                print("hello");
-
               } else {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Please enter all 6 digits')),
+                  const SnackBar(content: Text('Vui lòng nhập đầy đủ 6 chữ số')),
                 );
               }
             },
-            child: Text('Verify'),
+            child: const Text('Xác nhận'),
           ),
         ],
       );

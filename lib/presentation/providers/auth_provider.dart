@@ -8,6 +8,7 @@ import '../../domain/repositories/auth_repository.dart';
 import '../../domain/usecases/social_login_usecase.dart';
 import '../viewmodels/auth_viewmodel.dart';
 
+
 final dioProvider = Provider<Dio>((ref) => DioClient.create());
 final authRemoteDatasourceProvider = Provider<AuthRemoteDatasource>((ref) => AuthRemoteDatasource(ref.watch(dioProvider)));
 final authRepositoryProvider = Provider<AuthRepository>((ref) => AuthRepositoryImpl(ref.watch(authRemoteDatasourceProvider)));

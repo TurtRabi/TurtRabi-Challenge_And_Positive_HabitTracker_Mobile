@@ -4,17 +4,19 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:tracking_positive_mobile/domain/usecases/social_login_usecase.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import '../../core/Dto/LoginDto.dart';
 
 class AuthViewModel extends ChangeNotifier {
   final SocialLoginUseCase _socialLoginUseCase;
   AuthViewModel(this._socialLoginUseCase);
 
   final GoogleSignIn _googleSignIn = GoogleSignIn(
-    scopes: [
-      'email',
-    ],
+    scopes: ['email'],
     serverClientId: '471889571929-3h3g7q9tl7vvn2m4j45m9gnloc5eaf1v.apps.googleusercontent.com',
   );
+
   GoogleSignInAccount? _user;
   GoogleSignInAccount? get user => _user;
 
@@ -26,64 +28,101 @@ class AuthViewModel extends ChangeNotifier {
         final authentication = await account.authentication;
         final idToken = authentication.idToken;
         if (idToken != null) {
-          await _socialLoginUseCase.execute('google', idToken, 'mobile');
+          final result = await _socialLoginUseCase.execute('google', idToken, 'mobile');
           notifyListeners();
-          debugPrint('✅ Google User: ${account.displayName}, Email: ${account.email}');
+
+          final prefs = await SharedPreferences.getInstance();
+          // ✅ Lưu access token và refresh token nếu login thành công
+
+          await prefs.setString('accessKey', 'auth:token:${result.userId}');
+          await prefs.setString('refreshKey', 'auth:refresh:${result.userId}');
+          print('💾 [Google SignIn] Token saved');
+
           return true;
-        } else {
-          debugPrint('❌ Không lấy được ID Token! Đảm bảo bạn đã cấu hình đúng serverClientId (Web Client ID).');
-          return false;
         }
+      }
+      return false;
+    } catch (e) {
+      print('❌ [Google SignIn] Error: $e');
+      return false;
+    }
+  }
+
+
+
+  Future<bool> sigInWithUserNameAndPassword(String username, String password, {bool rememberMe = false}) async {
+    print('🔐 [Login] username: $username');
+    try {
+      final result = await _socialLoginUseCase.executeLogin(username, password);
+      notifyListeners();
+      if (result != null) {
+        print('✅ [Login] Success: $result');
+
+
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('accessKey', 'auth:token:${result.userId}');
+        if (rememberMe) {
+          await prefs.setString('refreshKey', 'auth:refresh:${result.userId}');
+          print("userId"+result.userId);
+          print('💾 [Login] Credentials saved');
+        }
+
+        return true;
       } else {
-        debugPrint('⚠️ Người dùng huỷ đăng nhập');
+        print('❌ [Login] Failed: null response');
         return false;
       }
     } catch (e) {
-
-      debugPrint('❌ Lỗi Google login: $e');
+      print('❌ [Login] Error: $e');
       return false;
     }
   }
 
-  Future<bool>sigInWithUserNameAndPassword(String username, String password) async{
-    var result = await _socialLoginUseCase.executeLogin(username, password);
-    notifyListeners();
-    if(result!=null){
-      print(result);
-      return true;
-    }
-    return false;
-  }
 
-  Future<void> registerWithUserNameAndPassword(String username, String password,String email,String phone) async{
-    var result = await _socialLoginUseCase.executeRegister(username, password, email, phone);
-    notifyListeners();
-    if(result!=null){
-
+  Future<void> registerWithUserNameAndPassword(String username, String password, String email, String phone) async {
+    print('📝 [Register] username: $username, email: $email, phone: $phone');
+    try {
+      final result = await _socialLoginUseCase.executeRegister(username, password, email, phone);
+      notifyListeners();
+      print('✅ [Register] Completed: ${result.statusCode}');
+    } catch (e) {
+      print('❌ [Register] Error: $e');
     }
   }
 
-  Future<bool> SendEmail(String email) async{
-    var findUserByEmail = await _socialLoginUseCase.executeGetUserByEmail(email);
-    if(findUserByEmail==null){
+  Future<bool> SendEmail(String email) async {
+    print('📧 [SendEmail] email: $email');
+    try {
+      final user = await _socialLoginUseCase.executeGetUserByEmail(email);
+      if (user == null) {
+        print('❌ [SendEmail] No user found with email: $email');
+        return false;
+      }
+      final sent = await _socialLoginUseCase.executeSendEmail(userId: user.id);
+      print('📤 [SendEmail] Email sent to userId: ${user.id}, result: $sent');
+      notifyListeners();
+      return sent;
+    } catch (e) {
+      print('❌ [SendEmail] Error: $e');
       return false;
     }
-    await _socialLoginUseCase.executeSendEmail(userId: findUserByEmail.id);
-    notifyListeners();
-    return true;
   }
 
   Future<bool> changePassword(String email, String newPassword) async {
-    var findUserByEmail = await _socialLoginUseCase.executeGetUserByEmail(email);
-    if(findUserByEmail==null){
+    print('🔑 [ChangePassword] email: $email');
+    try {
+      final user = await _socialLoginUseCase.executeGetUserByEmail(email);
+      if (user == null) {
+        print('❌ [ChangePassword] No user found with email: $email');
+        return false;
+      }
+      final result = await _socialLoginUseCase.executeChangePassword(id: user.id, newPassword: newPassword);
+      notifyListeners();
+      print('✅ [ChangePassword] Result: $result');
+      return result;
+    } catch (e) {
+      print('❌ [ChangePassword] Error: $e');
       return false;
     }
-    var response =await _socialLoginUseCase.executeChangePassword(id: findUserByEmail.id, newPassword: newPassword);
-    notifyListeners();
-    if(!response){
-      return false;
-    }
-    return true;
   }
-
 }
